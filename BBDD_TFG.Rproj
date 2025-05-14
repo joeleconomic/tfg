@@ -1,0 +1,16 @@
+Version: 1.0
+ProjectId: 85225680-c35f-49ed-a21a-d1c48f7845c2
+
+RestoreWorkspace: Default
+SaveWorkspace: Default
+AlwaysSaveHistory: Default
+
+EnableCodeIndexing: Yes
+UseSpacesForTab: Yes
+NumSpacesForTab: 2
+Encoding: UTF-8
+
+RnwWeave: Sweave
+LaTeX: pdfLaTeX
+
+ProjectName: BBDD_TFG
