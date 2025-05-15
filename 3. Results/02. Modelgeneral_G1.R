@@ -195,112 +195,174 @@ modelsummary(
   ),
   statistic = NULL,
   stars = TRUE,
-  output = "3. Results/comparacion_modelos2.docx"
+  output = "3. Results/comparacion_modelos1.docx"
 )
 
 
-# 2
-modelo2 <- feols(log(precios) ~ grupo1*post + year +
-                      log(loans) + log(wages) + log(popdensity) + log(housestock) + dwellings +
-                      log(ageing_ratio) + log(crime_rate) + log(ir) +
-                      enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre 
-                    | municipio + mes,
-                    data = df_amplio,
-                    vcov = "twoway")
+#2
+modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(ir) + log(popdensity) + 
+                   log(loans)  + +log(ageing_ratio) + dwellings + 
+                   + log(crime_rate)|
+                   municipio + mes,
+                 data = df_amplio,
+                 vcov = "twoway")
+
+summary(modelo1)
+residual <- resid(modelo1)
+jarque.bera.test(residual)
+
+modelo2 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(ir) + log(popdensity) + 
+                   log(loans)  + +log(ageing_ratio) + dwellings|
+                   municipio + mes,
+                 data = df_amplio,
+                 vcov = "twoway")
 
 summary(modelo2)
-residual <- resid(modelo_did)
-jarque.bera.test(residual)
-modelsummary(modelo2, stars = TRUE, outp = "modelogeneral2.docx")
 
 
-# 3
-modelo3 <- feols(log(precios) ~ grupo1*post + 
-                      log(loans) + log(wages) + log(popdensity) + log(housestock)  +
-                      log(ageing_ratio) + log(crime_rate) +
-                      enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre 
-                    | municipio + mes,
-                    data = df_amplio,
-                    vcov = "twoway")
+modelo3 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(ir) + log(popdensity) + 
+                   log(loans)  + +log(ageing_ratio)|
+                   municipio + mes,
+                 data = df_amplio,
+                 vcov = "twoway")
 
 summary(modelo3)
-residual <- resid(modelo3)
-jarque.bera.test(residual)
-modelsummary(modelo3, stars = TRUE, outp = "modelogeneral3.docx")
-
-modelsummary(list("Modelo 1" = modelo1, "Modelo 2" = modelo2, "Modelo 3" = modelo3), 
-             output = "3. Results/comparacion_modelos2.xlsx")
-
-modelsummary(
-  list("Modelo 1" = modelo1, "Modelo 2" = modelo2, "Modelo 3" = modelo3),
-  stars = TRUE,
-  statistic = NULL,  # Oculta los errores estándar o cualquier estadístico debajo del coeficiente
-  output = "3. Results/comparacion_modelos.docx"
-)
 
 
-# 4
+
 modelo4 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
-                   log(loans) + log(wages) + log(popdensity) + log(housestock) + dwellings +
-                   log(ageing_ratio) + log(crime_rate) + log(ir) 
-                 | municipio + mes,
+                   log(housestock) +  log(wages) + log(ir) + log(popdensity) + 
+                   log(loans) |
+                   municipio + mes,
                  data = df_amplio,
                  vcov = "twoway")
 
 summary(modelo4)
-residual <- resid(modelo4)
-jarque.bera.test(residual)
 
-# 5
+
 modelo5 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
-                   log(loans) + log(wages) + log(popdensity) + log(housestock) + dwellings +
-                   log(ageing_ratio)  + log(ir) 
-                 | municipio + mes,
+                   log(housestock) +  log(wages) + log(ir) + log(popdensity) |
+                   municipio + mes,
                  data = df_amplio,
                  vcov = "twoway")
 
 summary(modelo5)
-residual <- resid(modelo_did)
-jarque.bera.test(residual)
 
-# 6
 modelo6 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
-                   log(loans) + log(wages) + log(popdensity) + log(housestock) +
-                   log(ageing_ratio)  + log(ir) 
-                 | municipio + mes,
+                   log(housestock) +  log(wages) + log(ir)|
+                   municipio + mes,
                  data = df_amplio,
                  vcov = "twoway")
 
 summary(modelo6)
 
-# 7
-modelo7 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
-                   log(loans) + log(wages) + log(popdensity) + log(housestock)
-                 | municipio + mes,
+
+modelsummary(
+  list(
+    "Modelo 1" = modelo1,
+    "Modelo 2" = modelo2,
+    "Modelo 3" = modelo3,
+    "Modelo 4" = modelo4,
+    "Modelo 5" = modelo5,
+    "Modelo 6" = modelo6
+  ),
+  statistic = NULL,
+  stars = TRUE,
+  output = "3. Results/comparacion_modelos2.docx"
+)
+
+#3
+modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   y2015 + y2016 + y2017 + y2018 + y2019 +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings|
+                   municipio + time,
                  data = df_amplio,
                  vcov = "twoway")
 
-summary(modelo7)
+summary(modelo1)
 
-# 8
-modelo8 <- feols(log(precios) ~ grupo1*y2013 + grupo1*y2015 + grupo1*y2016 + grupo1*y2017 + grupo1*y2018 + grupo1*y2019 + 
-                   log(housestock)  +
-                   log(ageing_ratio) + log(crime_rate) 
-                 | municipio + mes,
+
+#4
+modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(popdensity) + 
+                   log(loans)  + +log(ageing_ratio) + dwellings + 
+                   + log(crime_rate)|
+                   municipio + time,
                  data = df_amplio,
                  vcov = "twoway")
 
-summary(modelo8)
+summary(modelo1)
+residual <- resid(modelo1)
+jarque.bera.test(residual)
 
-# 9
-modelo9 <- feols(log(precios) ~  + 
-                   log(housestock)  +
-                   log(ageing_ratio)  
-                 | municipio + mes,
+modelo2 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(popdensity) + 
+                   log(loans)  + +log(ageing_ratio) + 
+                   + log(crime_rate)|
+                   municipio + time,
                  data = df_amplio,
                  vcov = "twoway")
 
-summary(modelo9)
+summary(modelo2)
+
+modelo3 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages) + log(popdensity) + 
+                   +log(ageing_ratio) + 
+                   + log(crime_rate)|
+                   municipio + time,
+                 data = df_amplio,
+                 vcov = "twoway")
+
+summary(modelo3)
+
+modelo4 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock) +  log(wages)  + 
+                   +log(ageing_ratio) + 
+                   + log(crime_rate)|
+                   municipio + time,
+                 data = df_amplio,
+                 vcov = "twoway")
+
+summary(modelo4)
+
+modelo5 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock)  + 
+                   +log(ageing_ratio) + 
+                   + log(crime_rate)|
+                   municipio + time,
+                 data = df_amplio,
+                 vcov = "twoway")
+
+summary(modelo5)
+
+modelo6 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + 
+                   log(housestock)  + 
+                   +log(ageing_ratio) 
+                   |
+                   municipio + time,
+                 data = df_amplio,
+                 vcov = "twoway")
+
+summary(modelo6)
+
+modelsummary(
+  list(
+    "Modelo 1" = modelo1,
+    "Modelo 2" = modelo2,
+    "Modelo 3" = modelo3,
+    "Modelo 4" = modelo4,
+    "Modelo 5" = modelo5,
+    "Modelo 6" = modelo6
+  ),
+  statistic = NULL,
+  stars = TRUE,
+  output = "3. Results/comparacion_modelos2.docx")
+
+
 
 # Veamos solo el comportamiento de Lisboa
 df_lisboa <- df_amplio %>%
