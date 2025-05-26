@@ -52,19 +52,86 @@ turismoGL <- dfanual %>%
             noches = mean(nights, na.rm = TRUE),
             precio = mean(precios),
             turism = mean(nights, na.rm = TRUE)/mean(popdensity, na.rm = TRUE)) %>%
-  mutate(g1 = case_when(
-              poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.75) ~ 1,  
-              poblacion_turistica_equivalente <= quantile(poblacion_turistica_equivalente, 0.25) ~ 0),
-         g2 = case_when(
-              noches >= quantile(noches, 0.75) ~ 1,
-              noches <= quantile(noches, 0.25) ~ 0),
-         g3 = case_when(
-           poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.5) ~ 1,  
+  mutate(g1p = case_when(
+              poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.5) ~ 1,  
+              poblacion_turistica_equivalente <= quantile(poblacion_turistica_equivalente, 0.5) ~ 0),
+         g2p = case_when(
+           poblacion_turistica_equivalente > quantile(poblacion_turistica_equivalente, 0.5) ~ 1,  
            poblacion_turistica_equivalente <= quantile(poblacion_turistica_equivalente, 0.5) ~ 0),
-         g4 = case_when(
-           noches >= quantile(noches, 0.5) ~ 1,
-           noches <= quantile(noches, 0.5) ~ 0)
+         g3p = case_when(
+           poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.5) ~ 1,  
+           poblacion_turistica_equivalente < quantile(poblacion_turistica_equivalente, 0.5) ~ 0),
   )%>%
+  ungroup()
+
+turismoGLp <- dfanual %>%
+  filter(fecha <= as.Date("2019-12-01")) %>%
+  filter(municipio == "Cascais" |
+           municipio == "Oeiras" |
+           municipio == "Amadora" |
+           municipio == "Lisboa" |
+           municipio == "Sintra" |
+           municipio == "Odivelas" |
+           municipio == "Loures" |
+           municipio == "Mafra" |
+           municipio == "Vila Franca de Xira") %>%
+  group_by(municipio) %>%
+  summarise(poblacion_turistica_equivalente = ((mean(nights, na.rm = TRUE)/365)/mean(population, na.rm = TRUE))*100,
+            noches = mean(nights, na.rm = TRUE),
+            precio = mean(precios),
+            turism = mean(nights, na.rm = TRUE)/mean(popdensity, na.rm = TRUE)) %>%
+  mutate(g1p = case_when(
+    poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.75) ~ 1,  
+    poblacion_turistica_equivalente <= quantile(poblacion_turistica_equivalente, 0.25) ~ 0))%>%
+  ungroup()
+
+turismoGL2 <- dfanual %>%
+  filter(fecha <= as.Date("2019-12-01")) %>%
+  filter(municipio == "Cascais" |
+           municipio == "Oeiras" |
+           municipio == "Amadora" |
+           municipio == "Lisboa" |
+           municipio == "Sintra" |
+           municipio == "Odivelas" |
+           municipio == "Loures" |
+           municipio == "Mafra" |
+           municipio == "Vila Franca de Xira") %>%
+  group_by(municipio) %>%
+  summarise(poblacion_turistica_equivalente = ((mean(nights, na.rm = TRUE)/365)/mean(population, na.rm = TRUE))*100,
+            noches = mean(nights, na.rm = TRUE),
+            precio = mean(precios),
+            turism = mean(nights, na.rm = TRUE)/mean(popdensity, na.rm = TRUE)) %>%
+  mutate(g1p = case_when(
+    noches >= quantile(noches, 0.5) ~ 1,  
+    noches <= quantile(noches, 0.5) ~ 0),
+    g2p = case_when(
+      noches   > quantile(noches, 0.5) ~ 1,  
+      noches <= quantile(noches, 0.5) ~ 0),
+    g3p = case_when(
+      noches >= quantile(noches, 0.5) ~ 1,  
+      noches < quantile(noches, 0.5) ~ 0),
+  )%>%
+  ungroup()
+
+turismoGL2n <- dfanual %>%
+  filter(fecha <= as.Date("2019-12-01")) %>%
+  filter(municipio == "Cascais" |
+           municipio == "Oeiras" |
+           municipio == "Amadora" |
+           municipio == "Lisboa" |
+           municipio == "Sintra" |
+           municipio == "Odivelas" |
+           municipio == "Loures" |
+           municipio == "Mafra" |
+           municipio == "Vila Franca de Xira") %>%
+  group_by(municipio) %>%
+  summarise(poblacion_turistica_equivalente = ((mean(nights, na.rm = TRUE)/365)/mean(population, na.rm = TRUE))*100,
+            noches = mean(nights, na.rm = TRUE),
+            precio = mean(precios),
+            turism = mean(nights, na.rm = TRUE)/mean(popdensity, na.rm = TRUE)) %>%
+  mutate(g1p = case_when(
+    noches >= quantile(noches, 0.75) ~ 1,  
+    noches <= quantile(noches, 0.25) ~ 0))%>%
   ungroup()
 
 turismoGL$treated <- factor(turismoGL$treated, labels = c("Control", "Tratado"))
