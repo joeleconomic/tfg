@@ -10,9 +10,9 @@ df_amplio <- df_amplio %>%
   filter(grupo1 == 1 | grupo1 == 0) %>%
   filter(!municipio %in% c("Oliveira de Azeméis", "Trofa", "Espinho"),
          fecha <= as.Date("2019-12-01"),
-         fecha >= as.Date ("2013-01-01")) %>%
+         fecha >= as.Date ("2011-01-01")) %>%
   group_by(municipio) %>%
-  mutate(post = ifelse(fecha >= as.Date("2014-08-01"), 1, 0),
+  mutate(post = ifelse(fecha >= as.Date("2014-09-01"), 1, 0),
          time = row_number(),
          
          treated_before = ifelse(grupo1 == 1 & post == 0, 1, 0),
@@ -101,8 +101,8 @@ linearHypothesis(modelo, "treated_before_trend = control_before_trend")
 # Veamos si se cumple el test de placebo
 df_placebo <- df_amplio %>%
   mutate(post_placebo = ifelse(fecha >= as.Date("2013-08-01"), 1, 0)) %>%
-  filter(fecha <= as.Date("2014-08-01"),
-         fecha >= as.Date("2013-01-01"))
+  filter(fecha <= as.Date("2014-09-01"),
+         fecha >= as.Date("2011-01-01"))
 
 modelo_placebo <- feols(
   log(precios) ~ grupo1 * post_placebo +
@@ -126,14 +126,104 @@ modelsummary(
 # Matriz de correlaciones
 # Seleccionar solo variables numéricas relevantes
 variables_cor <- df_amplio %>%
-  dplyr::select(precios, ir, cost, CPI, sales, loans, wages, popdensity, 
-                popincrease, population, housestock, ageing_ratio, crime_rate, dwellings)
+  dplyr::select(precios, ir, loans, wages, popdensity, housestock, 
+                ageing_ratio, crime_rate, dwellings, cost, CPI, sales)
 
 cor_matrix <- cor(variables_cor, use = "complete.obs")
 
+variables_long <- variables_cor %>%
+  pivot_longer(cols = -precios, names_to = "variable", values_to = "valor")
 
+p <- ggplot(variables_long, aes(x = valor, y = precios)) +
+  geom_point(alpha = 0.6, color = "black") +
+  facet_wrap(~ variable, scales = "free_x", ncol = 3) +
+  theme_minimal() +
+  labs(
+    x = " ",
+    y = "Precios",
+    title = " ",
+    caption = "Fuente: Elaboración propia con datos del INE"
+  )
 
-# 1 fijando distintas cosas y manteniendo las variables
+print(p)
+ggsave("2. Scripts/imagenes/scatter.png", plot = p, width = 12, height = 9)
+
+epsilon <- 1e-12
+variables_log <- variables_cor %>%
+  mutate(across(everything(), ~ log(. + epsilon)))
+variables_long <- variables_log %>%
+  pivot_longer(cols = -precios, names_to = "variable", values_to = "valor")
+p <- ggplot(variables_long, aes(x = valor, y = precios)) +
+  geom_point(alpha = 0.6, color = "black") +
+  facet_wrap(~ variable, scales = "free_x", ncol = 3) +
+  theme_minimal() +
+  labs(
+    x = "Log de variable explicativa",
+    y = "Log(precios)",
+    title = " ",
+    caption = "Fuente: Elaboración propia con datos del INE"
+  )
+print(p)
+
+# 0 fijando distintas cosas sin tendencia
+# 1 fijando distintas cosas y manteniendo las variables y con tendencia
+
+modelo1 <- feols(log(precios) ~ grupo1*post  +
+                   log(housestock) +   log(loans) + log(wages) + 
+                   log(popdensity) + log(ir)+ 
+                   log(ageing_ratio) + log(dwelling) +log(crime_rate)|
+                   municipio,
+                 data = df_amplio,
+                 panel.id = c("municipio", "fecha"),
+                 vcov = ~municipio + time)
+
+summary(modelo1)
+
+modelo2 <- feols(log(precios) ~ grupo1*post  +
+                   log(housestock) +   log(loans) + log(wages) + 
+                   log(popdensity) + log(ir)+ 
+                   log(ageing_ratio) + log(dwelling) +log(crime_rate)|
+                   municipio + mes,
+                 data = df_amplio,
+                 panel.id = c("municipio", "fecha"),
+                 vcov = ~municipio + time)
+
+summary(modelo2)
+
+modelo3 <- feols(log(precios) ~ grupo1*post  +
+                   log(housestock) +   log(loans) + log(wages) + 
+                   log(popdensity) + log(ir)+ 
+                   log(ageing_ratio) + log(dwelling) +log(crime_rate)|
+                   municipio + mes + year,
+                 data = df_amplio,
+                 panel.id = c("municipio", "fecha"),
+                 vcov = ~municipio + time)
+
+summary(modelo3)
+
+modelo4 <- feols(log(precios) ~ grupo1*post +
+                   log(housestock) +   log(loans) + log(wages) + 
+                   log(popdensity) + log(ir)+ 
+                   log(ageing_ratio) + log(dwelling) +log(crime_rate)|
+                   municipio + mes + year + time,
+                 data = df_amplio,
+                 panel.id = c("municipio", "fecha"),
+                 vcov = ~municipio + time)
+
+summary(modelo4)
+
+modelo5 <- feols(log(precios) ~ grupo1*post +
+                   log(housestock) +   log(loans) + log(wages) + 
+                   log(popdensity) + log(ir)+ 
+                   log(ageing_ratio) + log(dwelling) +log(crime_rate)|
+                   municipio + time,
+                 data = df_amplio,
+                 panel.id = c("municipio", "fecha"),
+                 vcov = ~municipio + time)
+
+summary(modelo5)
+
+# 1 fijando distintas cosas y manteniendo las variables y con tendencia
 
 modelo1 <- feols(log(precios) ~ grupo1*post + time +
                    log(housestock) +   log(loans) + log(wages) + 
@@ -146,18 +236,6 @@ modelo1 <- feols(log(precios) ~ grupo1*post + time +
 
 summary(modelo1)
 
-residuos <- resid(modelo1) 
-ajustados <- fitted(modelo1)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  # Para muestras pequeñas < 5000
-
 modelo2 <- feols(log(precios) ~ grupo1*post + time +
                    log(housestock) +   log(loans) + log(wages) + 
                    log(popdensity) + log(ir)+ 
@@ -168,18 +246,6 @@ modelo2 <- feols(log(precios) ~ grupo1*post + time +
                  vcov = ~municipio + time)
 
 summary(modelo2)
-
-residuos <- resid(modelo2) 
-ajustados <- fitted(modelo2)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  # Para muestras pequeñas < 5000
 
 modelo3 <- feols(log(precios) ~ grupo1*post + time +
                    log(housestock) +   log(loans) + log(wages) + 
@@ -192,18 +258,6 @@ modelo3 <- feols(log(precios) ~ grupo1*post + time +
 
 summary(modelo3)
 
-residuos <- resid(modelo3) 
-ajustados <- fitted(modelo3)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos) 
-
 modelo4 <- feols(log(precios) ~ grupo1*post + time +
                    log(housestock) +   log(loans) + log(wages) + 
                    log(popdensity) + log(ir)+ 
@@ -215,24 +269,67 @@ modelo4 <- feols(log(precios) ~ grupo1*post + time +
 
 summary(modelo4)
 
-residuos <- resid(modelo4) 
-ajustados <- fitted(modelo4)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  
-
 modelsummary(
   list("1" = modelo1, "2" = modelo2, "3" = modelo3, "4" = modelo4),
   stars = TRUE,
   statistic = "p.value",  
   output = "3. Results/fijandodistinto.docx")
 
+# Fijando distinto y did anuales sin tendencia
+modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019  +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings + 
+                   log(ir)|
+                   municipio ,
+                 data = df_amplio,
+                 panel.id = c("municipio", "time"),
+                 vcov = ~municipio + time)
+
+summary(modelo1)
+
+modelo2 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019  +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings + 
+                   log(ir)|
+                   municipio + mes,
+                 data = df_amplio,
+                 panel.id = c("municipio", "time"),
+                 vcov = ~municipio + time)
+
+summary(modelo2)
+
+modelo3 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019  +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings + 
+                   log(ir)|
+                   municipio + year + mes,
+                 data = df_amplio,
+                 panel.id = c("municipio", "time"),
+                 vcov = ~municipio + time)
+
+summary(modelo3)
+
+modelo4 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings + 
+                   log(ir)|
+                   municipio + mes + year + time,
+                 data = df_amplio,
+                 panel.id = c("municipio", "time"),
+                 vcov = ~municipio + time)
+
+summary(modelo4)
+
+modelo5 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 +
+                   log(housestock) + log(ageing_ratio) + log(crime_rate) + 
+                   log(loans) + log(wages) + log(popdensity) + dwellings + 
+                   log(ir)|
+                   municipio + time,
+                 data = df_amplio,
+                 panel.id = c("municipio", "time"),
+                 vcov = ~municipio + time)
+
+summary(modelo5)
 
 # 2 fijando distinto y did anuales
 
@@ -247,18 +344,6 @@ modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
 
 summary(modelo1)
 
-residuos <- resid(modelo1) 
-ajustados <- fitted(modelo1)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  
-
 modelo2 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                    log(housestock) + log(ageing_ratio) + log(crime_rate) + 
                    log(loans) + log(wages) + log(popdensity) + dwellings + 
@@ -269,18 +354,6 @@ modelo2 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                  vcov = ~municipio + time)
 
 summary(modelo2)
-
-residuos <- resid(modelo2) 
-ajustados <- fitted(modelo2)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  
 
 modelo3 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                    log(housestock) + log(ageing_ratio) + log(crime_rate) + 
@@ -293,18 +366,6 @@ modelo3 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
 
 summary(modelo3)
 
-residuos <- resid(modelo3) 
-ajustados <- fitted(modelo3)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  
-
 modelo4 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                    log(housestock) + log(ageing_ratio) + log(crime_rate) + 
                    log(loans) + log(wages) + log(popdensity) + dwellings + 
@@ -315,18 +376,6 @@ modelo4 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                  vcov = ~municipio + time)
 
 summary(modelo4)
-
-residuos <- resid(modelo4) 
-ajustados <- fitted(modelo4)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-jarque.bera.test(residuos)  
 
 modelsummary(
   list("1" = modelo1, "2" = modelo2, "3" = modelo3, "4" = modelo4),
@@ -390,7 +439,7 @@ modelsummary(
 # para anual
 modelo1 <- feols(log(precios) ~ d2015 + d2016 + d2017 + d2018 + d2019 + time +
                    log(housestock) + log(ageing_ratio)  + 
-                   log(wages) + log(dwelling) + 
+                   log(wages) + log(dwelling)  + 
                    log(ir)|
                    municipio ,
                  data = df_amplio,
@@ -435,97 +484,11 @@ modelsummary(
   stars = TRUE,
   output = "3. Results/reducdidanual.docx")
 
-# Modelos FGLS
-modelo_lm_aux <- lm(log(precios) ~ DiD + log(housestock) + log(loans) + log(wages) +
+# Modelos OLS
+modelo_lm <- lm(log(precios) ~ DiD + log(housestock) + log(loans) + log(wages) +
                       log(popdensity) + log(dwelling) + log(ir) + factor(municipio),
                     data = df_amplio)
-vif(modelo_lm_aux)
-
-# Sin fijar
-modelo_gls <- gls(
-  log(precios) ~ grupo1*post +
-    log(housestock)  + 
-    log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir),
-  correlation = corAR1(form = ~ time | municipio),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)
-
-# Fijar municipio
-modelo_gls <- gls(
-  log(precios) ~ 0 + DiD +
-    log(housestock)  + log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir) + factor(municipio),
-  correlation = corARMA(form = ~ time | municipio, p = 1, q = 0),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)
-
-residuos <- resid(modelo_gls, type = "normalized")  # residuos normalizados
-ajustados <- fitted(modelo_gls)
-plot(ajustados, residuos,
-     xlab = "Valores ajustados",
-     ylab = "Residuos normalizados",
-     main = "Residuos vs Ajustados")
-abline(h = 0, col = "red")
-qqnorm(residuos)
-qqline(residuos, col = "red")
-acf(residuos, main = "ACF de los residuos normalizados")
-shapiro.test(residuos)  # Para muestras pequeñas < 5000
+summary(modelo_lm)
+vif(modelo_lm)
 
 
-# Fijar municipio y mes
-modelo_gls <- gls(
-  log(precios) ~ 0 + DiD +
-    log(housestock)  + 
-    log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir) + factor(municipio) +
-    enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre,
-  correlation = corAR1(form = ~ time | municipio),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)
-
-# Fijar municipio, mes y año
-modelo_gls <- gls(
-  log(precios) ~ 0 + DiD +
-    log(housestock)  + 
-    log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir) + factor(municipio) +
-    enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre +
-    y2014 + y2015 + y2016 + y2017 + y2018 + y2019,
-  correlation = corAR1(form = ~ time | municipio),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)
-
-#Fijar municipio, mes y tendencia
-modelo_gls <- gls(
-  log(precios) ~ 0 + DiD +
-    log(housestock)  + 
-    log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir) + factor(municipio) +
-    enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre +
-    time,
-  correlation = corAR1(form = ~ time | municipio),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)
-modelo_gls <- gls(
-  log(precios) ~ 0 + d2015 + d2016 + d2017 + d2018 + d2019 +
-    log(housestock)  + log(ageing_ratio) + log(crime_rate) +
-    log(loans) + log(wages) + log(popdensity) + log(dwelling) + 
-    log(ir) + factor(municipio) +
-    enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre + noviembre +
-    time,
-  correlation = corAR1(form = ~ time | municipio),
-  weights = varIdent(form = ~1 | municipio),
-  data = df_amplio)
-
-summary(modelo_gls)

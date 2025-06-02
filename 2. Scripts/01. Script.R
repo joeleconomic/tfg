@@ -4,17 +4,20 @@ df_final <- readRDS("1. Data/df_finaltodo.rds")
 
 # Problemas con datos Na, analicemos por nivel geografico
 qualityc <- df_final %>%
+  filter(fecha <= as.Date("2019-12-01"),
+         fecha >= as.Date("2013-01-01")) %>%
   group_by(comunidad) %>%
   summarise(complete_rate = sum(!is.na(precios))/n()) %>%
-  ungroup() %>%
-  na.omit()
+  ungroup() 
+
 
 dir.create("2. Scripts/tablas")
 write.xlsx(qualityc, "2. Scripts/tablas/calidad.xlsx")
 
 completerateL <- df_final %>%
   filter(comunidad == "Área Metropolitana de Lisboa",
-         fecha <= as.Date("2019-12-01")) %>%
+         fecha <= as.Date("2019-12-01"),
+         fecha >= as.Date("2013-01-01")) %>%
   group_by(municipio) %>%
   summarise(precios = sum(!is.na(precios))/n(),
             sales = sum(!is.na(sales))/n(),
@@ -36,7 +39,8 @@ dfporto <- df_final %>%
 
 completerateP <- df_final %>%
   filter(comunidad == "Área Metropolitana do Porto",
-         fecha <= as.Date("2019-12-01")) %>%
+         fecha <= as.Date("2019-12-01"),
+         fecha >= as.Date("2013-01-01")) %>%
   group_by(municipio) %>%
   summarise(precios = sum(!is.na(precios))/n(),
             sales = sum(!is.na(sales))/n(),
@@ -84,7 +88,8 @@ completerate <- df_final %>%
 
 completerate <- df_final %>%
   filter(comunidad == "Área Metropolitana do Porto",
-         fecha <= as.Date("2019-12-01")) %>%
+         fecha <= as.Date("2019-12-01"),
+         fecha >= as.Date("2013-01-01")) %>%
   group_by(municipio) %>%
   summarise(precios = sum(!is.na(precios))/n(),
             sales = sum(!is.na(sales)/n()),
@@ -125,7 +130,8 @@ turismol <- dfanual %>%
   group_by(municipio) %>%
   summarise(poblacion_turistica_equivalente = ((mean(nights, na.rm = TRUE)/365)/mean(population, na.rm = TRUE))*100,
             precio = mean(precios),
-            noches = mean(nights, na.rm = TRUE)) %>%
+            noches = mean(nights, na.rm = TRUE),
+            res = mean(population, na.rm= TRUE)) %>%
   mutate(grupo1 = case_when(
           poblacion_turistica_equivalente >= quantile(poblacion_turistica_equivalente, 0.75, na.rm = TRUE) ~ 1,
           poblacion_turistica_equivalente <= quantile(poblacion_turistica_equivalente, 0.25, na.rm = TRUE) ~ 0),
@@ -176,7 +182,7 @@ df <- df_final %>%
   left_join(grupos, by = "municipio") %>%
   filter(grupo1 == 1 |
          grupo1 == 0,
-         fecha >= as.Date("2012-01-01"),
+         fecha >= as.Date("2013-01-01"),
          fecha <= as.Date("2019-12-01")) %>%
   rename(treated = grupo1) %>%
   filter(!municipio %in% c("Espinho", "Oliveira de Azeméis", "Trofa"))
@@ -188,16 +194,16 @@ dfgrupos <- df %>%
 dfgrupos$treated <- factor(dfgrupos$treated, labels = c("Control", "Tratado"))
 
 serietemporal <- ggplot(dfgrupos, aes(x = fecha, y = precios, color = treated)) +
-  geom_vline(xintercept = as.Date("2014-08-01"), linetype = "dashed" , color = "grey") +
+  geom_vline(xintercept = as.Date("2014-09-01"), linetype = "dashed" , color = "grey") +
   geom_line() +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
         legend.position = "bottom") +
   labs(x = "Fecha",
-       y = "Precio mediano por metro cuadrado",
+       y = "Precios (€/m²)",
        color = "Grupos") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  labs(caption = "Fuente: Elaboración propia con datos del INE") 
+  labs(caption = "Fuente: Elaboración propia a partir del INE") 
 
 dir.create("2. Scripts/imagenes")
 png("2. Scripts/imagenes/1. Serie temporal de precios.png", width = 800, height =600)
@@ -216,7 +222,7 @@ normalidad <- ggplot(df, aes(x = precios)) +
   labs(title = " ",
        x = "Precios (€/m²)",
        y = "Densidad",
-       caption = "Fuente: Elaboración propia con datos del INE") +
+       caption = "Fuente: Elaboración propia a partir del INE") +
   theme(plot.title = element_text(hjust = 0.5))
 
 png("2. Scripts/imagenes/3. Analisis de normalidad.png", width = 800, height =600)
@@ -247,6 +253,8 @@ write.xlsx(diferenciamedias, "2. Scripts/tablas/diferenciademediasamplio.xlsx")
 
 # Tabla de descriptivos
 tabladescriptivos<- df %>%
+  filter(fecha <= as.Date("2019-12-01"),
+         fecha >= as.Date("2013-01-01")) %>%
   group_by(treated) %>%
   summarise(
     preciosmedio = mean(precios),
@@ -292,7 +300,18 @@ tabladescriptivos<- df %>%
     irmedio = mean(ir),
     irsd = sd(ir),
     irmin= min(ir),
-    irmax = max(ir))
+    irmax = max(ir)) %>%
+  pivot_longer(
+    cols = -treated,
+    names_to = c("variable", "medida"),
+    names_sep = "_",
+    values_to = "valor"
+  ) %>%
+  pivot_wider(
+    names_from = treated,
+    names_prefix = "grupo_",
+    values_from = valor
+  )
 
 write.xlsx(tabladescriptivos, "2. Scripts/tablas/descriptivos.xlsx")
 
@@ -346,7 +365,7 @@ write.xlsx(skimdf, "2. Scripts/tablas/desporto.xlsx")
 
 # Analisis de normalidad de la endogena
 
-normalidad <- ggplot(df, aes(x = precios)) +
+normalidad <- ggplot(df, aes(x = log(precios))) +
   geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", color = "black") +
   stat_function(fun = dnorm, 
                 args = list(mean = mean(df$precios, na.rm = TRUE), 

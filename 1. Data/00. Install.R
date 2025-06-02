@@ -2,7 +2,8 @@
 packages <- c(
   "tidyverse", "skimr", "openxlsx", "fixest", "lmtest", "dynlm",
   "tseries", "broom", "spdep", "spatialreg", "splm", "sf", "geodata",
-  "terra", "plm", "car", "systemfit", "modelsummary", "stargazer", "pandoc", "nlme"
+  "terra", "plm", "car", "systemfit", "modelsummary", "stargazer", "pandoc", 
+  "nlme", "Gally", "corrplot"
 )
 
 # Instalar los paquetes si no están instalados
